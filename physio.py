@@ -60,14 +60,14 @@ def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis
             coords = keypoints['coordinates']
 
             if vis_skeleton:
-                for p1i, p2i in SKELETON_CONNECTIONS:
+                for p1i, p2i, color in SKELETON_CONNECTIONS:
                     p1 = (int(coords[p1i][0] * width), int(coords[p1i][1] * height))
                     p2 = (int(coords[p2i][0] * width), int(coords[p2i][1] * height))
 
                     if p1 == (0, 0) or p2 == (0, 0):
                         continue
 
-                    cv2.line(img=img, pt1=p1, pt2=p2, color=(0, 255, 0), thickness=3)
+                    cv2.line(img=img, pt1=p1, pt2=p2, color=color, thickness=3)
 
             if vis_keypoints:
                 for i, kps in enumerate(coords):
@@ -78,7 +78,7 @@ def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis
                     if p == (0, 0):
                         continue
 
-                    cv2.circle(img=img, center=p, radius=5, color=(0, 0, 255), thickness=-1)
+                    cv2.circle(img=img, center=p, radius=5, color=(255, 255, 255), thickness=-1)
 
     return img
 
