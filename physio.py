@@ -9,7 +9,7 @@ import numpy as np
 import openpifpaf
 import torch
 
-from common import write_on_image
+from common import SKELETON_CONNECTIONS, write_on_image
 from poses import do_seated_right_knee_extension, SRKE_TOTAL
 from processor import Processor
 
@@ -37,7 +37,9 @@ def cli():
 
     vis_args = parser.add_argument_group('Visualisation')
     vis_args.add_argument('--joints', default=False, action='store_true',
-                          help='Draw joint points on the output video.')
+                          help='Draw joint\'s keypoints on the output video.')
+    vis_args.add_argument('--skeleton', default=False, action='store_true',
+                          help='Draw skeleton on the output video.')
 
     args = parser.parse_args()
 
@@ -50,20 +52,34 @@ def cli():
     return args
 
 
-def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis_keypoints: bool = False) -> np.ndarray:
-    """Draw keypoints on the output video frame."""
-    if vis_keypoints:
+def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis_keypoints: bool = False,
+              vis_skeleton: bool = False) -> np.ndarray:
+    """Draw keypoints/skeleton on the output video frame."""
+    if vis_keypoints or vis_skeleton:
         for keypoints in keypoint_sets:
-            for i, kps in enumerate(keypoints['coordinates']):
-                # Scale up joint coordinate
-                x = int(kps[0] * width)
-                y = int(kps[1] * height)
+            coords = keypoints['coordinates']
 
-                # Joint wasn't detected
-                if x == 0 and y == 0:
-                    continue
+            if vis_skeleton:
+                for p1i, p2i in SKELETON_CONNECTIONS:
+                    p1 = (int(coords[p1i][0] * width), int(coords[p1i][1] * height))
+                    p2 = (int(coords[p2i][0] * width), int(coords[p2i][1] * height))
 
-                cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+                    if p1 == (0, 0) or p2 == (0, 0):
+                        continue
+
+                    cv2.line(img=img, pt1=p1, pt2=p2, color=(0, 255, 0), thickness=3)
+
+            if vis_keypoints:
+                for i, kps in enumerate(coords):
+                    # Scale up joint coordinate
+                    p = (int(kps[0] * width), int(kps[1] * height))
+
+                    # Joint wasn't detected
+                    if p == (0, 0):
+                        continue
+
+                    cv2.circle(img=img, center=p, radius=5, color=(0, 0, 255), thickness=-1)
+
     return img
 
 
@@ -120,7 +136,9 @@ def main():
         # IMP: Having force_complete_pose=False results in separate annotations
         ###
 
-        keypoint_sets, scores, width_height = processor_singleton.single_image(b64image=base64.b64encode(cv2.imencode('.jpg', img)[1]).decode('UTF-8'))
+        keypoint_sets, scores, width_height = processor_singleton.single_image(
+            b64image=base64.b64encode(cv2.imencode('.jpg', img)[1]).decode('UTF-8')
+        )
         keypoint_sets = [{
             'coordinates': keypoints.tolist(),
             'detection_id': i,
@@ -128,7 +146,8 @@ def main():
             'width_height': width_height,
         } for i, (keypoints, score) in enumerate(zip(keypoint_sets, scores))]
 
-        img = visualise(img=img, keypoint_sets=keypoint_sets, width=width, height=height, vis_keypoints=args.joints)
+        img = visualise(img=img, keypoint_sets=keypoint_sets, width=width, height=height, vis_keypoints=args.joints,
+                        vis_skeleton=args.skeleton)
 
         cur_step, mess = pose_func(keypoint_sets, cur_step)
 
