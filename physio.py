@@ -2,7 +2,10 @@ import argparse
 import base64
 import logging
 
+from typing import List
+
 import cv2
+import numpy as np
 import openpifpaf
 import torch
 
@@ -32,15 +35,36 @@ def cli():
     parser.add_argument('--pose', default='seated_right_knee_extension', type=str,
                         help='Pose ID to perform.')
 
+    vis_args = parser.add_argument_group('Visualisation')
+    vis_args.add_argument('--joints', default=False, action='store_true',
+                          help='Draw joint points on the output video.')
+
     args = parser.parse_args()
 
-    # log
+    # Log
     logging.basicConfig(level=logging.INFO if not args.debug else logging.DEBUG)
 
-    # add args.device
+    # Add args.device
     args.device = torch.device('cpu')
 
     return args
+
+
+def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis_keypoints: bool = False) -> np.ndarray:
+    """Draw keypoints on the output video frame."""
+    if vis_keypoints:
+        for keypoints in keypoint_sets:
+            for i, kps in enumerate(keypoints['coordinates']):
+                # Scale up joint coordinate
+                x = int(kps[0] * width)
+                y = int(kps[1] * height)
+
+                # Joint wasn't detected
+                if x == 0 and y == 0:
+                    continue
+
+                cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+    return img
 
 
 def main():
@@ -104,15 +128,7 @@ def main():
             'width_height': width_height,
         } for i, (keypoints, score) in enumerate(zip(keypoint_sets, scores))]
 
-        # Using only the first person for visualisation
-        keypoints = keypoint_sets[0]
-
-        # For visualisation
-        for i, kps in enumerate(keypoints['coordinates']):
-            x = int(kps[0] * width)
-            y = int(kps[1] * height)
-
-            cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
+        img = visualise(img=img, keypoint_sets=keypoint_sets, width=width, height=height, vis_keypoints=args.joints)
 
         cur_step, mess = pose_func(keypoint_sets, cur_step)
 
