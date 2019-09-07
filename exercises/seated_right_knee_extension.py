@@ -6,7 +6,11 @@ TOTAL_STEPS = 3  # Number of steps in the exercise
 
 
 def do_seated_right_knee_extension(humans: List, current_step: int) -> Tuple[int, str]:
-    """Perform seated knee flexion and extension for the right leg.
+    """Perform seated knee flexion and extension with the right leg.
+
+    Description: Best done sitting in a chair. Bend the knee as far as possible and hold for 5sec then straighten as far as possible
+        or bring back to start position. Slowly the range will improve.
+
     Link: https://youtu.be/OpFov55bKZo
     """
     satisfies, err_mess = satisfies_prerequisites(humans=humans)
@@ -36,26 +40,29 @@ def perform_step(human: Dict, cur_step: int) -> Tuple[int, str]:
 
     if cur_step == 0:
         if 120 < angle < 150:
-            return 1, 'Initial position set\nSlowly extend right leg'
+            return cur_step + 1, 'Initial position set\nSlowly extend the right leg'
 
-        return 0, 'Move right leg to seating position'
+        return cur_step, 'Move right leg to seating position'
 
     elif cur_step == 1:
-        if make_360(angle=angle) >= 180:
-            return 2, 'Extension limit reached\nSlowly lower right leg'
+        if 120 < angle < 150:
+            return cur_step, 'Initial position set\nSlowly extend the right leg'
 
-        return 1, 'Slowly extend right leg'
+        if make_360(angle=angle) >= 180:
+            return cur_step + 1, 'Extension limit reached\nSlowly lower right leg'
+
+        return cur_step, 'Continue extending the right leg'
 
     elif cur_step == 2:
         if make_360(angle=angle) >= 180:
-            return 2, 'Extension limit reached\nSlowly lower right leg'
+            return cur_step, 'Extension limit reached\nSlowly lower right leg'
 
         if 0 < angle < 150:
-            return 3, 'Right leg back in starting position'
+            return cur_step + 1, 'Right leg back in starting position'
 
-        return 2, 'Slowly lower right leg'
+        return cur_step, 'Continue lowering the right leg'
 
-    return cur_step, 'Nothing'
+    return cur_step, ''
 
 
 def satisfies_prerequisites(humans: List) -> Tuple[bool, str]:

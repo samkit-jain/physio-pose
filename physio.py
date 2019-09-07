@@ -10,7 +10,7 @@ import openpifpaf
 import torch
 
 from common import SKELETON_CONNECTIONS, write_on_image
-from poses import do_seated_right_knee_extension, SRKE_TOTAL
+from exercises import do_left_heel_slides, do_seated_right_knee_extension, LHS_TOTAL, SRKE_TOTAL
 from processor import Processor
 
 
@@ -32,8 +32,8 @@ def cli():
                         help='Path to the video file.')
     parser.add_argument('--debug', default=False, action='store_true',
                         help='debug messages and autoreload')
-    parser.add_argument('--pose', default='seated_right_knee_extension', type=str,
-                        help='Pose ID to perform.')
+    parser.add_argument('--exercise', default='seated_right_knee_extension', type=str,
+                        help='Exercise ID to perform.')
 
     vis_args = parser.add_argument_group('Visualisation')
     vis_args.add_argument('--joints', default=False, action='store_true',
@@ -84,10 +84,14 @@ def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis
 
 
 def main():
-    pose_methods = {
+    exercises = {
         'seated_right_knee_extension': {
             'func': do_seated_right_knee_extension,
             'steps': SRKE_TOTAL
+        },
+        'left_heel_slides': {
+            'func': do_left_heel_slides,
+            'steps': LHS_TOTAL
         }
     }
     args = cli()
@@ -107,10 +111,14 @@ def main():
         height, width = img.shape[:2]
     else:
         width, height = [int(dim) for dim in args.resize.split('x')]
+        
+    if args.exercise not in exercises:
+        logging.error(f'Exercise {args.exercise} not supported!')
+        return 
 
-    pose_func = pose_methods[args.pose]['func']
+    exercise_func = exercises[args.exercise]['func']
     cur_step = 0
-    pose_steps = pose_methods[args.pose]['steps']
+    total_steps = exercises[args.exercise]['steps']
 
     width_height = (int(width * args.resolution // 16) * 16 + 1,
                     int(height * args.resolution // 16) * 16 + 1)
@@ -149,13 +157,17 @@ def main():
         img = visualise(img=img, keypoint_sets=keypoint_sets, width=width, height=height, vis_keypoints=args.joints,
                         vis_skeleton=args.skeleton)
 
-        cur_step, mess = pose_func(keypoint_sets, cur_step)
+        temp_step, mess = exercise_func(keypoint_sets, cur_step)
+
+        # No need to change cur_step when prerequisites are not met
+        if temp_step != -1:
+            cur_step = temp_step
 
         img = write_on_image(img=img, text=mess, color=[0, 0, 0])
 
         cv2.imshow('You', img)
 
-        if cur_step == pose_steps:
+        if cur_step == total_steps:
             task_finished = True
             continue
 

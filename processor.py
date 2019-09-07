@@ -2,10 +2,9 @@ import base64
 import io
 import time
 
+import openpifpaf
 import PIL
 import torch
-
-import openpifpaf
 
 
 class Processor(object):
