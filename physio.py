@@ -40,6 +40,12 @@ def cli():
                           help='Draw joint\'s keypoints on the output video.')
     vis_args.add_argument('--skeleton', default=False, action='store_true',
                           help='Draw skeleton on the output video.')
+    vis_args.add_argument('--save-output', default=False, action='store_true',
+                          help='Save the result in a video file.')
+    vis_args.add_argument('--fps', default=20, type=int,
+                          help='FPS for the output video.')
+    vis_args.add_argument('--out-path', default='result.avi', type=str,
+                          help='Save the output video at the path specified. .avi file format.')
 
     args = parser.parse_args()
 
@@ -114,7 +120,7 @@ def main():
         
     if args.exercise not in exercises:
         logging.error(f'Exercise {args.exercise} not supported!')
-        return 
+        return
 
     exercise_func = exercises[args.exercise]['func']
     cur_step = 0
@@ -126,6 +132,7 @@ def main():
     processor_singleton = Processor(width_height, args)
 
     task_finished = False
+    output_video = None
 
     while not task_finished:
         ret_val, img = cam.read()
@@ -164,6 +171,18 @@ def main():
             cur_step = temp_step
 
         img = write_on_image(img=img, text=mess, color=[0, 0, 0])
+
+        if output_video is None:
+            if args.save_output:
+                output_video = cv2.VideoWriter(filename=args.out_path, fourcc=cv2.VideoWriter_fourcc(*'MP42'), fps=args.fps,
+                                               frameSize=img.shape[:2][::-1])
+                logging.debug(f'Saving the output video at {args.out_path} with {args.fps} frames per seconds')
+            else:
+                output_video = None
+                logging.debug(f'Not saving the output video')
+
+        if output_video is not None:
+            output_video.write(img)
 
         cv2.imshow('You', img)
 
