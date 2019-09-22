@@ -10,7 +10,8 @@ import openpifpaf
 import torch
 
 from common import SKELETON_CONNECTIONS, write_on_image
-from exercises import do_left_heel_slides, do_seated_right_knee_extension, LHS_TOTAL, SRKE_TOTAL
+from exercises import do_left_heel_slides, do_seated_right_knee_extension, do_side_lying_left_leg_lift, LHS_TOTAL, \
+    SRKE_TOTAL, SLLLL_TOTAL
 from processor import Processor
 
 
@@ -20,7 +21,7 @@ def cli():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     openpifpaf.decoder.cli(parser, force_complete_pose=True,
-                           instance_threshold=0.1, seed_threshold=0.5)
+                           instance_threshold=0.2, seed_threshold=0.5)
     openpifpaf.network.nets.cli(parser)
     parser.add_argument('--resolution', default=0.4, type=float,
                         help=('Resolution prescale factor from 640x480. '
@@ -91,13 +92,17 @@ def visualise(img: np.ndarray, keypoint_sets: List, width: int, height: int, vis
 
 def main():
     exercises = {
+        'left_heel_slides': {
+            'func': do_left_heel_slides,
+            'steps': LHS_TOTAL
+        },
         'seated_right_knee_extension': {
             'func': do_seated_right_knee_extension,
             'steps': SRKE_TOTAL
         },
-        'left_heel_slides': {
-            'func': do_left_heel_slides,
-            'steps': LHS_TOTAL
+        'side_lying_left_leg_lift': {
+            'func': do_side_lying_left_leg_lift,
+            'steps': SLLLL_TOTAL
         }
     }
     args = cli()

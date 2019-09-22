@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Tuple
 
 import cv2
 import numpy as np
@@ -41,6 +41,27 @@ def get_angle(p0: List, p1: List, p2: List) -> float:
     v1 = np.array(p2) - np.array(p1)
 
     return np.degrees(np.math.atan2(np.linalg.det([v0, v1]), np.dot(v0, v1)))
+
+
+def get_intersection_point(line1: List, line2: List) -> Tuple:
+    """Return the point of intersection between two lines.
+
+    Source: https://stackoverflow.com/a/42727584/7760998
+    """
+    # Make float
+    line1 = [[float(line1[0][0]), float(line1[0][1])], [float(line1[1][0]), float(line1[1][1])]]
+    line2 = [[float(line2[0][0]), float(line2[0][1])], [float(line2[1][0]), float(line2[1][1])]]
+
+    s = np.vstack([line1[0], line1[1], line2[0], line2[1]])  # s for stacked
+    h = np.hstack((s, np.ones((4, 1))))  # h for homogeneous
+    l1 = np.cross(h[0], h[1])  # get first line
+    l2 = np.cross(h[2], h[3])  # get second line
+    x, y, z = np.cross(l1, l2)  # point of intersection
+
+    if z == 0:  # lines are parallel
+        raise ValueError('lines do not intersect')
+
+    return x / z, y / z
 
 
 def make_360(angle: float) -> float:
