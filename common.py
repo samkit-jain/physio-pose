@@ -1,11 +1,12 @@
-from enum import Enum
+from enum import IntEnum, unique
 from typing import List, Tuple
 
 import cv2
 import numpy as np
 
 
-class CocoPart(Enum):
+@unique
+class CocoPart(IntEnum):
     """Body part locations in the 'coordinates' list."""
     Nose = 0
     LEye = 1
