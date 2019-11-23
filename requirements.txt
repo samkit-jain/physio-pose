@@ -1,3 +1,3 @@
 wheel
-opencv-python
-openpifpaf
+opencv-python==4.1.0.25
+openpifpaf==0.9.0
