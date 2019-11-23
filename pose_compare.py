@@ -11,10 +11,14 @@ import csv
 import math
 import sys
 
+from itertools import chain
 from typing import List
 
 import fastdtw
+import numpy as np
 
+from scipy.ndimage.filters import gaussian_filter
+from scipy.signal import medfilt
 from scipy.spatial.distance import euclidean
 
 from common import CocoPart
@@ -89,6 +93,61 @@ def normalise(all_coordinates: List) -> List:
     return norm_coords
 
 
+def dimension_selection(frames: List) -> List:
+    """Remove indices that don't vary a lot during the pose.
+
+    Key points that do not move significantly in the sequence will cause the signals of the respective coordinates to be
+    roughly constant with only little variance. All signals whose variance is below a threshold will be filtered out and
+    are assumed to be uninformative.
+
+    :returns: A set of indices of dimensions that should be kept
+    """
+
+    def keep_sequence(seq: List) -> bool:
+        """Check whether the points in the sequence vary a lot or not."""
+        # Use a median filter for smoothing
+        seq = medfilt(seq, kernel_size=3)
+
+        # Filter the dimension based on variance
+        return np.var(seq) > 0.10
+
+    # Reorder the coordinates such that they are per joint and not per frame
+    frames = [list(chain(*frame)) for frame in frames]  # Flatten the nested lists inside
+    sequences = list(map(list, zip(*frames)))  # Transpose the list
+
+    # Drop low variance columns
+    dimensions = [i for i, sequence in enumerate(sequences) if keep_sequence(sequence)]
+
+    return dimensions
+
+
+def calculate_score(seq1: List, seq2: List, dimensions: List) -> float:
+    """Calculate how similar the two pose sequences are."""
+
+    def process_signal(signal: List) -> List:
+        """Final processing before dynamic time warping."""
+        # Apply Gaussian filter for further processing
+        signal = gaussian_filter(signal, sigma=1)
+
+        # Make the sequence/signal zero-mean by subtracting the mean from it
+        mean = np.mean(signal)
+        return [x - mean for x in signal]
+
+    distance = 0.0
+
+    for dim in dimensions:
+        sig1 = process_signal(signal=seq1[dim])
+        sig2 = process_signal(signal=seq2[dim])
+
+        temp_distance, _ = fastdtw.fastdtw(sig1, sig2, radius=30, dist=euclidean)
+        distance += temp_distance
+
+    # Normalise DTW score
+    distance /= len(dimensions)
+
+    return distance
+
+
 def main():
     # CSV file paths
     pose_csv1 = sys.argv[1]
@@ -102,12 +161,14 @@ def main():
     pose1 = normalise(pose1)
     pose2 = normalise(pose2)
 
-    # Dynamic Time Warping
-    from itertools import chain
-    pose1 = [list(chain(*p)) for p in pose1]
-    pose2 = [list(chain(*p)) for p in pose2]
-    distance, _ = fastdtw.fastdtw(pose1, pose2, radius=30, dist=euclidean)
-    print(distance)
+    # Dimension Selection
+    pose1_dimensions = dimension_selection(pose1.copy())
+    pose2_dimensions = dimension_selection(pose2.copy())
+
+    dimensions = sorted(set(pose1_dimensions + pose2_dimensions))  # Take a union to get final list of dimensions
+
+    score = calculate_score(pose1, pose2, dimensions)
+    print(f'Score = {score:.6f}')
 
 
 if __name__ == '__main__':
